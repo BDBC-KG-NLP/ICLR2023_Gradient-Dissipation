@@ -93,7 +93,7 @@ from datetime import datetime
 from filelock import FileLock
 
 from evaluation import Construct_Eval_Test_Dataset, pooling
-from simcse.models import lunif, lalign, cal_true_loss
+from simcse.models import lunif, lalign
 
 logger = logging.get_logger(__name__)
 
@@ -210,39 +210,6 @@ def cal_test_align_uniform(model, dataloader, args=None):
     metrics = {'align': align, 'uniform': uniform}
     return metrics
 
-def cal_test_loss(model, dataloader, args=None):
-    con_losses, true_losses = [], []
-    encoder = getattr(model, model.encoder_name)
-    for batch in dataloader:
-        with torch.no_grad():
-            batch = [ele.to(model.device) for ele in batch]
-            if len(batch) == 5:
-                outputs = encoder(input_ids=batch[0], attention_mask=batch[1], output_hidden_states=True,
-                                return_dict=True)
-                emba = pooling(outputs, batch[1], args)
-                outputs = encoder(input_ids=batch[2], attention_mask=batch[3], output_hidden_states=True,
-                                return_dict=True)
-                embb = pooling(outputs, batch[3], args)
-            else:
-                outputs = encoder(input_ids=batch[0], token_type_ids=batch[1], attention_mask=batch[2],
-                                output_hidden_states=True, return_dict=True)
-                emba = pooling(outputs, batch[2], args)
-                outputs = encoder(input_ids=batch[3], token_type_ids=batch[4], attention_mask=batch[5],
-                                output_hidden_states=True, return_dict=True)
-                embb = pooling(outputs, batch[5], args)
-            emba = F.normalize(emba, dim=-1)
-            embb = F.normalize(embb, dim=-1)
-            cos_sim = model.sim(emba.unsqueeze(1), embb.unsqueeze(0), change_temp=0.05)
-            labels = torch.arange(cos_sim.size(0)).long().to(model.device)
-            loss_fct = nn.CrossEntropyLoss()
-            con_loss = loss_fct(cos_sim, labels)
-            true_loss = cal_true_loss(model, emba, embb)
-        con_losses.append(con_loss.item())
-        true_losses.append(true_loss.item())
-    return_dict =  {"con_loss": sum(con_losses) / len(con_losses),
-                    "true_loss": sum(true_losses) / len(true_losses)}
-    return return_dict
-
 
 class CLTrainer(Trainer):
 
@@ -302,36 +269,6 @@ class CLTrainer(Trainer):
                 metrics['eval_{}'.format(task)] = results[task]['devacc']
             avg_transfer /= 7
             metrics['eval_avg_transfer'] = avg_transfer
-
-        if self.args.log_align_uniform and not eval_senteval_transfer:
-            sts_dev_path = "/home/LAB/niezj/unsupervised/AAAI_MixCSE/data/sts-dev.tsv"
-            if self.eval_test_dataset is None:
-                self.eval_test_dataset = Construct_Eval_Test_Dataset(sts_dev_path, self.tokenizer)
-            # if self.eval_train_dataset is None:
-            #     self.eval_train_dataset = Construct_Eval_Train_Dataset(sts_dev_path, self.tokenizer)
-            if self.eval_test_pos_dataset is None:
-                self.eval_test_pos_dataset = Construct_Eval_Test_Pos_Dataset(sts_dev_path, self.tokenizer)
-            # eval_train_dataloader = DataLoader(self.eval_train_dataset, shuffle=False, batch_size=64, drop_last=True)
-            eval_test_dataloader = DataLoader(self.eval_test_dataset, shuffle=False, batch_size=64)
-            eval_test_pos_dataloader = DataLoader(self.eval_test_pos_dataset, shuffle=False, batch_size=64, drop_last=True)
-            # train_scores = cal_train_align_uniform(self.model, eval_train_dataloader)
-            test_scores = cal_test_align_uniform(self.model, eval_test_dataloader)
-            test_losses = cal_test_loss(self.model, eval_test_pos_dataloader)
-            # self.model.writer.add_scalar(tag="sts-b train align", scalar_value=train_scores["align"],
-            #                              global_step=self.model.step_num)
-            # self.model.writer.add_scalar(tag="sts-b train uniform", scalar_value=train_scores["uniform"],
-            #                              global_step=self.model.step_num)
-            # self.model.writer.add_scalar(tag="sts-b train con_loss", scalar_value=train_scores["con_loss"],
-            #                              global_step=self.model.step_num)
-            self.model.writer.add_scalar(tag="sts-b align", scalar_value=test_scores["align"],
-                                         global_step=self.model.step_num)
-            self.model.writer.add_scalar(tag="sts-b uniform", scalar_value=test_scores["uniform"],
-                                         global_step=self.model.step_num)
-            self.model.writer.add_scalar(tag="sts-b con_loss", scalar_value=test_losses["con_loss"],
-                                         global_step=self.model.step_num)
-            self.model.writer.add_scalar(tag="sts-b true_loss", scalar_value=test_losses["true_loss"],
-                                         global_step=self.model.step_num)
-
         self.log(metrics)
         return metrics
 

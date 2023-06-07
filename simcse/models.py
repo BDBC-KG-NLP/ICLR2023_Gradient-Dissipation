@@ -177,9 +177,6 @@ def cal_pooler_output(cls,
                       encoder,
                       batch_size,
                       num_sent,
-                      token_type_embeddings,
-                      position_embeddings,
-                      inputs_embeds,
                       input_ids=None,
                       attention_mask=None,
                       token_type_ids=None,
@@ -187,7 +184,6 @@ def cal_pooler_output(cls,
                       head_mask=None,
                       output_attentions=None,
                       mlm_input_ids=None):
-    embedding_output_tuple = encoder.embeddings.norm_and_drop(inputs_embeds, token_type_embeddings, position_embeddings)
     # Get raw embeddings
     outputs = encoder(
         input_ids,
@@ -195,7 +191,6 @@ def cal_pooler_output(cls,
         token_type_ids=token_type_ids,
         position_ids=position_ids,
         head_mask=head_mask,
-        embedding_output=embedding_output_tuple,
         output_attentions=output_attentions,
         output_hidden_states=True if cls.model_args.pooler_type in ['avg_top2', 'avg_first_last'] else False,
         return_dict=True,
@@ -211,7 +206,6 @@ def cal_pooler_output(cls,
             token_type_ids=token_type_ids,
             position_ids=position_ids,
             head_mask=head_mask,
-            inputs_embeds=inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=True if cls.model_args.pooler_type in ['avg_top2', 'avg_first_last'] else False,
             return_dict=True,
@@ -331,18 +325,8 @@ def cl_forward(cls,
     if token_type_ids is not None:
         token_type_ids = token_type_ids.view((-1, token_type_ids.size(-1)))  # (bs * num_sent, len)
 
-    inputs_embeds, token_type_embeddings, position_embeddings = \
-        encoder.embeddings.get_divided_embeddings(
-            input_ids=input_ids,
-            token_type_ids=token_type_ids,
-            position_ids=position_ids,
-            inputs_embeds=inputs_embeds,
-        )
 
     outputs, pooler_output, mlm_outputs = cal_pooler_output(cls, encoder, batch_size, num_sent,
-                                                            token_type_embeddings=token_type_embeddings,
-                                                            position_embeddings=position_embeddings,
-                                                            inputs_embeds=inputs_embeds,
                                                             input_ids=input_ids,
                                                             attention_mask=attention_mask,
                                                             token_type_ids=token_type_ids,
@@ -397,23 +381,12 @@ def sentemb_forward(
     if token_type_ids is not None:
         token_type_ids = token_type_ids.view((-1, token_type_ids.size(-1)))  # (bs * num_sent, len)
 
-    inputs_embeds, token_type_embeddings, position_embeddings = \
-        encoder.embeddings.get_divided_embeddings(
-            input_ids=input_ids,
-            token_type_ids=token_type_ids,
-            position_ids=position_ids,
-            inputs_embeds=inputs_embeds,
-        )
-
-    embedding_output_tuple = encoder.embeddings.norm_and_drop(inputs_embeds, token_type_embeddings, position_embeddings)
-
     outputs = encoder(
         input_ids,
         attention_mask=attention_mask,
         token_type_ids=token_type_ids,
         position_ids=position_ids,
         head_mask=head_mask,
-        embedding_output=embedding_output_tuple,
         output_attentions=output_attentions,
         output_hidden_states=True if cls.pooler_type in ['avg_top2', 'avg_first_last'] else False,
         return_dict=True,

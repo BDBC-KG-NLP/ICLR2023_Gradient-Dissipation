@@ -169,8 +169,6 @@ def cal_align_uniform(model, dataloader, args=None):
         with torch.no_grad():
             batch = [ele.to(model.device) for ele in batch]
 
-            # print(batch[0].size(),batch[1].size(),batch[2].size())
-            # print(batch[3].size(),batch[4].size(),batch[5].size())
             if len(batch) == 5:
                 outputs = model(input_ids=batch[0], attention_mask=batch[1], output_hidden_states=True,
                                 return_dict=True)
@@ -198,14 +196,12 @@ def cal_align_uniform(model, dataloader, args=None):
         results += scores
     align = []
     embs = torch.cat(embs, dim=0)
-    uniform = F.pdist(embs).pow(2).neg().exp().mean().log().item()
     for score, label in zip(results, labels):
         if label > 4.0:
             align.append(score)
     align = sum(align) / len(align)
-    old_metrics = {'align': align, 'uniform': uniform}
-    new_metrics = {'new_align': align, 'uniform': F.pdist(embs).pow(2).mul(-2).exp().mean().log().item()}
-    return old_metrics, new_metrics
+    metrics = {'alignment': align, 'uniformity': F.pdist(embs).pow(2).mul(-2).exp().mean().log().item()}
+    return metrics
 
 def record_distribution(model, dataloader, args=None):
     sim_list = []
@@ -248,7 +244,6 @@ def main():
                         help="Tasks to evaluate on. If '--task_set' is specified, this will be overridden")
     parser.add_argument("--eval_path", default="data/sts-train.tsv", help="eval path")
     parser.add_argument("--angle_cal", type=bool, default=False)
-    parser.add_argument("--use_paper", type=bool, default=False)
     args = parser.parse_args()
 
     # Load transformers' model checkpoint
@@ -259,9 +254,8 @@ def main():
 
     eval_dataset = Construct_Eval_Test_Dataset(args.eval_path, tokenizer)
     eval_dataloader = DataLoader(eval_dataset, shuffle=False, batch_size=64)
-    old_scores, new_scores = cal_align_uniform(model, eval_dataloader, args)
-    print("old score:", old_scores)
-    print("new score:", new_scores)
+    scores = cal_align_uniform(model, eval_dataloader, args)
+    print("alignment & uniformity:", scores)
 
     if args.angle_cal:
         scores = cal_angle(model, eval_dataloader, args)

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="集群（实验室）" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
       <paths name="zhangsh@192.168.3.203:22">
         <serverdata>
@@ -19,10 +19,11 @@
       <paths name="集群（实验室）">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/ICLR2023_Gradient-Dissipation" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
     </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

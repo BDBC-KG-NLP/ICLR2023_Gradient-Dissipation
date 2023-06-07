@@ -5,12 +5,12 @@
 
 TRAIN_FILE_PATH=data/wiki1m_for_simcse.txt
 EVAL_FILE_PATH=data/sts-dev.tsv
-MODEL_PATH="/home/LAB/niezj/pretrained_models/"${model_name}"-"${model_size}"-uncased"
+
 for seed in 42
 do
 model_name=bert
 model_size=base
-margin=0.45
+margin=0.44
 alpha=2
 uniform_t=6
 temp=0.05
@@ -19,7 +19,7 @@ loss_type=met
 batch_size=128
 learning_rate=1e-5
 CUDA_DEVICES_NUM=0
-
+MODEL_PATH="/home/LAB/niezj/pretrained_models/"${model_name}"-"${model_size}"-uncased"
 SAVE_PATH=result/${seed}-temp${temp}-${loss_type}-lr${learning_rate}-bs${batch_size}-margin${margin}-alpha${alpha}-t${uniform_t}-loss_lambda${loss_lambda}-${model_name}-${model_size}-uncased
 
 CUDA_VISIBLE_DEVICES=$CUDA_DEVICES_NUM python3 -u train.py \
@@ -48,10 +48,8 @@ CUDA_VISIBLE_DEVICES=$CUDA_DEVICES_NUM python3 -u train.py \
     --align_alpha ${alpha} \
     --uniform_t ${uniform_t} \
     --logger_dir ${MODEL_PATH} \
-    --iter 1 \
-    --log_align_uniform \
     "$@"
 
-CUDA_VISIBLE_DEVICES=$CUDA_DEVICES_NUM python3 simcse_to_huggingface.py --path=$MODEL_PATH
-CUDA_VISIBLE_DEVICES=$CUDA_DEVICES_NUM python evaluation.py --model_name_or_path $MODEL_PATH --pooler cls_before_pooler --task_set full --mode test
+CUDA_VISIBLE_DEVICES=$CUDA_DEVICES_NUM python3 simcse_to_huggingface.py --path=$SAVE_PATH
+CUDA_VISIBLE_DEVICES=$CUDA_DEVICES_NUM python evaluation.py --model_name_or_path $SAVE_PATH --pooler cls_before_pooler --task_set full --mode test
 done

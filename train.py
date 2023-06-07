@@ -147,7 +147,7 @@ class ModelArguments:
         metadata={"help": "The relative weights between alignment loss and uniformity loss."}
     )
     loss_type: str = field(
-        default="margin_e",
+        default="met",
         metadata={"help": "The loss type of contrastive learning."}
     )
     margin: float = field(
@@ -241,12 +241,6 @@ class OurTrainingArguments(TrainingArguments):
         default=False,
         metadata={"help": "Evaluate transfer task dev sets (in validation)."},
     )
-
-    log_align_uniform: bool = field(
-        default=False,
-        metadata={"help": "The flag to decide whether log the alignment and uniformity of sts-b dev"}
-    )
-
     @cached_property
     @torch_required
     def _setup_devices(self) -> "torch.device":
